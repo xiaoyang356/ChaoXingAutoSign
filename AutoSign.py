@@ -135,7 +135,7 @@ if __name__ == '__main__':
     password = os.environ["PASSWORD"]
     SENDKEY = os.environ["SENDKEY"]
     address = os.environ["ADDRESS"]
-    manual_cookie = os.environ.get("COOKIE", "")
+    manual_cookie = os.environ.get("COOKIE2", "")
     sleepTime = 10
     course_dict = {}
 
