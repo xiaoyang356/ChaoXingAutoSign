@@ -4,6 +4,7 @@ import time
 import os
 import json
 import sys
+import re
 from login import Login
 
 global currClass
@@ -134,25 +135,52 @@ if __name__ == '__main__':
     password = os.environ["PASSWORD"]
     SENDKEY = os.environ["SENDKEY"]
     address = os.environ["ADDRESS"]
+    manual_cookie = os.environ.get("COOKIE", "")
     sleepTime = 10
     course_dict = {}
 
-    # 核心修改：最多重试3次，防止死循环
-    max_retries = 3
-    retry_count = 0
-    while course_dict == {} and retry_count < max_retries:
-        login(username, password)
+    # 手动Cookie优先
+    if manual_cookie:
+        print("使用手动Cookie登录")
+        session = requests.session()
+        for item in manual_cookie.split(';'):
+            if '=' in item:
+                k, v = item.strip().split('=', 1)
+                session.cookies.set(k, v)
         getclass()
-        if course_dict == {}:
-            print("cookie过期或获取课程失败，重新登录 (第 {}/{} 次)".format(retry_count + 1, max_retries))
-            cookie_file = os.path.dirname(os.path.realpath(__file__)) + "/cookies.json"
-            if os.path.exists(cookie_file):
-                os.remove(cookie_file)
-            retry_count += 1
-            time.sleep(2)
+        if course_dict != {}:
+            print("手动Cookie有效，直接签到")
+        else:
+            print("手动Cookie失效，尝试账号密码登录")
+            course_dict = {}
+            max_retries = 3
+            retry_count = 0
+            while course_dict == {} and retry_count < max_retries:
+                login(username, password)
+                getclass()
+                if course_dict == {}:
+                    print("cookie过期或获取课程失败，重新登录 (第 {}/{} 次)".format(retry_count + 1, max_retries))
+                    cookie_file = os.path.dirname(os.path.realpath(__file__)) + "/cookies.json"
+                    if os.path.exists(cookie_file):
+                        os.remove(cookie_file)
+                    retry_count += 1
+                    time.sleep(2)
+    else:
+        max_retries = 3
+        retry_count = 0
+        while course_dict == {} and retry_count < max_retries:
+            login(username, password)
+            getclass()
+            if course_dict == {}:
+                print("cookie过期或获取课程失败，重新登录 (第 {}/{} 次)".format(retry_count + 1, max_retries))
+                cookie_file = os.path.dirname(os.path.realpath(__file__)) + "/cookies.json"
+                if os.path.exists(cookie_file):
+                    os.remove(cookie_file)
+                retry_count += 1
+                time.sleep(2)
 
     if course_dict == {}:
-        print("连续 {} 次获取课程失败，Cookie 已失效，任务强制退出。".format(max_retries))
+        print("连续获取课程失败，Cookie 已失效，任务强制退出。")
         sys.exit(1)
 
     for currClass in course_dict:
