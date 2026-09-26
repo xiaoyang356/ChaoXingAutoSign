@@ -6,6 +6,7 @@ import json
 import sys
 import re
 from login import Login
+import requests.cookies as rcookies
 
 global currClass
 currClass = 0
@@ -58,6 +59,11 @@ def getclass():
     }
     res = session.get(url, headers=headers)
 
+    # 登录态自检
+    if 'login' in res.url.lower() or '登录' in res.text[:500]:
+        print("⚠️ 被超星踢回登录页，Cookie 实际失效")
+        return
+
     if res.status_code == 200:
         class_HTML = etree.HTML(res.text)
         i = 0
@@ -70,7 +76,7 @@ def getclass():
             except Exception as e:
                 print(e)
     else:
-        print("error:课程处理失败")
+        print("error:课程处理失败，状态码:", res.status_code)
 
 
 def qiandao(url: str, address: str, sleepTime: int, SENDKEY: str):
@@ -139,14 +145,16 @@ if __name__ == '__main__':
     sleepTime = 10
     course_dict = {}
 
-    # 手动Cookie优先
+    # 手动Cookie优先（修复注入方式）
     if manual_cookie:
         print("使用手动Cookie登录")
         session = requests.session()
+        cookie_jar = rcookies.RequestsCookieJar()
         for item in manual_cookie.split(';'):
             if '=' in item:
                 k, v = item.strip().split('=', 1)
-                session.cookies.set(k, v)
+                cookie_jar.set(k, v, domain='.chaoxing.com')
+        session.cookies = cookie_jar
         getclass()
         if course_dict != {}:
             print("手动Cookie有效，直接签到")
